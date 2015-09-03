@@ -32,7 +32,7 @@ def crawl(url):
       write(csvdata)
      
 def write(newcsvline): 
-      with open('/csvoutput/csvdata.csv','a') as f:
+      with open(os.getcwd().replace("\\",'/')+'/csvoutput/csvdata.csv','a') as f:
             f.write(newcsvline+"\n")
             f.close()
      
