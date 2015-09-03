@@ -23,13 +23,8 @@ def crawl(url):
                   namelist[i] = namelist[i].replace(char,'')
             i+=1
       filings+=len(idlist)
-      n=1
-
       for item in idlist:
-            print "analyzing filing entry "+str(n)+"..."
             write(scrub_page("http://securities.stanford.edu/filings-case.html?id="+item))
-            n+=1
-      write(csvdata)
      
 def write(newcsvline): 
       with open(os.getcwd().replace("\\",'/')+'/csvoutput/csvdata.csv','a') as f:
@@ -199,6 +194,7 @@ global filings
 filings=0
 connectioncheck = False
 try:  
+
       print "Attempting to establish connection with server..."
       urllib2.urlopen("http://securities.stanford.edu/filings.html")
       connectioncheck = True
@@ -213,5 +209,5 @@ for page in range(1,totalpages+1):
       html = urllib2.urlopen(url)
       data = html.read()
       crawl(url)
-      #print ('%.2f'%(float(filings*100)/(totalpages*20))+"% complete...")
+      print ('%.2f'%(float(filings*100)/(totalpages*20))+"% complete...")
       
