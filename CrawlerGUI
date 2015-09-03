@@ -1,0 +1,43 @@
+from Tkinter import *
+
+root = Tk()
+root.geometry("566x350")
+root.resizable(width=FALSE, height=FALSE)
+
+menubar = Menu(root)
+menubar.add_command(label="Hello!", command=root.quit)#change command
+menubar.add_command(label="Quit!", command=root.quit)#change command
+root.config(menu=menubar)
+
+titleframe = Frame(root, height = 5)
+titleframe.pack()
+title = Label(titleframe, text="\nDirectory to place CSV file: ")
+title.pack()
+
+directoryframe = Frame(root, height = 0)
+directoryframe.pack()
+    
+#the entry and button for the directory
+directoryfield = Entry(directoryframe, width=50)
+directoryfield.grid(row=0,column=0,padx=5)
+dirchange = Button(directoryframe, text="Choose new locaton...")
+dirchange.grid(row=0,column=1)
+
+
+spacemaker = Frame(root)
+spacemaker.pack()
+space = Label(spacemaker)
+space.grid(row=0,column=0,pady=18)
+
+
+
+buttonframe = Frame(root, height = 0)
+buttonframe.pack()
+
+customize = Button(buttonframe, text="customize crawler", height = 2, width = 20)
+customize.grid(row=0,column=0,pady=1)
+startcrawl = Button(buttonframe, text="Inititate crawler", height = 2, width = 20, bg = root.cget('bg'))
+startcrawl.grid(row=1,column=0,pady=1)
+
+
+root.mainloop()  
