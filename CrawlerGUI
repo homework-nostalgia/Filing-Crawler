@@ -38,7 +38,7 @@ def startstop():
             return_val = async_result.get()  #get the completed result
             
             
-            if (index%5==0):
+            if ((index%5==0)and(stop != True)):
                 percent = float(filings*100)/(201)
                 progresstext.configure(text = ('%.2f'%(percent)+"% complete..."))
                 bar = int(index/5)
