@@ -1,14 +1,90 @@
 from Tkinter import *
+import tkMessageBox
 import time
+import urllib2
+from multiprocessing.pool import ThreadPool
+
+
+def getwebdata(url):
+    return urllib2.urlopen(url).read()
+
+def wrapper(func, args, res):
+    res.append(func(*args))
+
+def startstop():
+    global stop
+    global url
+    url = ""
+    if (startcrawl.cget('text')[0]=="I"):
+        progressframe.configure(relief='sunken')
+        progresstext.configure(text = "0.00% complete...")
+        startcrawl.configure(text = "Stop crawler",bg="#FF5050")
+        n = 1
+        filings = 0
+        for index in range(1,202):
+            if (stop == True):
+                break
+            filings+=1
+            pool = ThreadPool(processes=1)
+
+            url = "http://securities.stanford.edu/filings.html?page=1"
+            async_result = pool.apply_async(getwebdata, (url,)) #initiate multithreading
+            ts = time.time()
+            while (async_result.ready()==False):
+                if ((time.time()-ts)>10):
+                    tkMessageBox.showerror(message = "ERROR: Request timeout. please check your internet connectivity. The program will terminate.")
+                    sys.exit(0)                 
+                root.update()
+            return_val = async_result.get()  #get the completed result
+            
+            
+            if (index%5==0):
+                percent = float(filings*100)/(201)
+                progresstext.configure(text = ('%.2f'%(percent)+"% complete..."))
+                bar = int(index/5)
+                eval("bar"+str(bar)).configure(bg = "#33CCFF")        
+                root.update()
+        if (stop != True):
+            progresstext.configure(text = ("100% complete!"))
+            bar40.configure(bg = '#33CCFF')
+            root.update
+        stop = False
+            
+    else:
+        if tkMessageBox.askyesno(message = "OMFG ARE YOU SURE YOU WANT TO CANCEL THE CRAWL!?"):
+            stop = True
+            tkMessageBox.askyesno(message = "OMFG CRAWL CANCELLED. DOES $USER WANT FILE SAVED!?")
+            progressframe.configure(relief='flat')
+            startcrawl.configure(text = "Inititate crawler", height = 2, width = 20, bg = "#99FF99")        
+            progresstext.configure(text =  "")
+            i = 0
+            for item in range(1,41):
+                i+=1
+                eval("bar"+str(item)).configure(bg = 'SystemButtonFace')        
+                root.update()        
+    root.update()    
+    
+def notdoneyet():
+    tkMessageBox.showinfo(message="THIS ISN'T IMPLEMENTED YET!! GOSH!!!!")
+    
+
+
 
 root = Tk()
+global stop
+stop = False
+
+
+
+defaultbg = root.cget('bg')
 root.geometry("566x350")
 root.resizable(width=FALSE, height=FALSE)
+root.title("Web crawl test interface")
 
 #menu bar
 menubar = Menu(root)
-menubar.add_command(label="File", command=root.quit)#change command
-menubar.add_command(label="Quit", command=root.quit)#change command
+menubar.add_command(label="File", command=lambda: notdoneyet())#change command
+menubar.add_command(label="Quit", command=lambda: notdoneyet())#change command
 root.config(menu=menubar)
 
 titleframe = Frame(root)
@@ -21,7 +97,7 @@ directoryframe = Frame(root)
 directoryframe.pack()
 directoryfield = Entry(directoryframe, width=50)
 directoryfield.grid(row=0,column=0,padx=5)
-dirchange = Button(directoryframe, text="Choose new locaton...")
+dirchange = Button(directoryframe, text="Choose new locaton...",command=lambda: notdoneyet())
 dirchange.grid(row=0,column=1)
 
 #empty cell for spacing
@@ -33,9 +109,10 @@ space.grid(row=0,column=0,pady=18)
 #config and start buttons
 buttonframe = Frame(root)
 buttonframe.pack()
-customize = Button(buttonframe, text="customize crawler", height = 2, width = 20)
+customize = Button(buttonframe, text="customize crawler", height = 2, width = 20,command=lambda: notdoneyet())
 customize.grid(row=0,column=0,pady=1)
-startcrawl = Button(buttonframe, text="Inititate crawler", height = 2, width = 20, bg = root.cget('bg'))
+startcrawl = Button(buttonframe, text="Inititate crawler", height = 2, width = 20, bg = "#99FF99",command=lambda: startstop())
+#startcrawl.configure(command=startstop())
 startcrawl.grid(row=1,column=0,pady=1)
 
 #empty cell for spacing
@@ -45,19 +122,35 @@ space2 = Label(spacemaker2)
 space2.grid(row=0,column=0,pady=15)
 
 #progress bar
-progressframe = Frame(root,bd=1,relief='sunken')
+progressframe = Frame(root,bd=1,relief='flat')
 progressframe.pack()
+
 
 for item in range(1,41):
     exec("bar"+str(item)+" = Button(progressframe, height = 1, width = 0,relief='flat')")
     exec("bar"+str(item)+".grid(row=0,column="+str(item-1)+")")
 
-root.update()
+textframe = Frame(root)
+textframe.pack()
+progresstext = Label(textframe, text = "")
+progresstext.grid(row = 0, column=0)
 
-for item in range(1,41):
-    time.sleep(1)
-    eval("bar"+str(item)).configure(bg = "#33CCFF")
-    root.update()
+spacemaker3 = Frame(root)
+spacemaker3.pack()
+space3 = Label(spacemaker3)
+space3.grid(row=0,column=0,pady=0)
 
+serverframe = Frame(root)
+serverinfo = Label(root, text = "")
+serverinfo.pack(side = LEFT)
+
+try:  
+
+    serverinfo.configure(text = "Attempting to establish connection with server...")
+    urllib2.urlopen("http://securities.stanford.edu/filings.html")
+    serverinfo.configure(text = "Connected to server at http://securities.stanford.edu/filings.html")
+           
+except:
+    serverinfo.configure(text = "unable to communcate with server.")
 
 root.mainloop()  
