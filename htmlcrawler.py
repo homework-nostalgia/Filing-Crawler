@@ -1,7 +1,7 @@
 import urllib2
 import os
 import sys
- 
+import time
  
 def crawl(url):
       global filings
@@ -60,11 +60,10 @@ def scrub_page(url):
       ticker = get_ticker(data)
       comarket = get_company_market(data)
       marketstatus = get_market_status(data)
-     
       marker = data.find('<h3>Reference Complaint</h3>')
       if (marker>=0):
-            data = data[marker:]  
-           
+            if (assesscomplaintinfo(data[marker:])):
+                  data = data[marker:]
       court = get_court(data)
       docket = get_docket(data)
       judge = get_judge(data)
@@ -72,10 +71,14 @@ def scrub_page(url):
       periodstart = get_period_start(data)
       periodend = get_period_end(data)
       complaintinfo = getcomplaintinfo(data)
-      complaintdate = complaintinfo[0]
-      pdfdata = complaintinfo[1]
-      writepdf(complaintpdf)
-      csvrow = (casestatus+"!@#$%^"+casedate+"!@#$%^"+defendant+"!@#$%^"+sector+"!@#$%^"+industry+"!@#$%^"+hq+"!@#$%^"+ticker+"!@#$%^"+comarket+"!@#$%^"+marketstatus+"!@#$%^"+court+"!@#$%^"+docket+"!@#$%^"+judge+"!@#$%^"+filedate+"!@#$%^"+periodstart+"!@#$%^"+periodend).replace(',','').replace('!@#$%^',',')
+      if (complaintinfo!=-1):
+            complaintdate = complaintinfo[0]
+            writepdf(complaintinfo[1],defendant,casedate)
+            
+      else:
+            complaintdate = "No filing found"
+
+      csvrow = (casestatus+"!@#$%^"+casedate+"!@#$%^"+defendant+"!@#$%^"+sector+"!@#$%^"+industry+"!@#$%^"+hq+"!@#$%^"+ticker+"!@#$%^"+comarket+"!@#$%^"+marketstatus+"!@#$%^"+court+"!@#$%^"+docket+"!@#$%^"+judge+"!@#$%^"+filedate+"!@#$%^"+periodstart+"!@#$%^"+periodend+"!@#$%^"+complaintdate).replace(',','').replace('!@#$%^',',')
       return csvrow
      
  
@@ -184,6 +187,30 @@ def get_period_end(data):
       data = data[27:data.find('\n')]
       periodend = data.replace('</div>','')
       return periodend
+
+def assesscomplaintinfo(data):
+      docdata = []
+      rows = []
+             
+      while(data.find("""<tr class="table-link" onclick="window.location='""")>=0):
+            data = data[data.find("""<tr class="table-link" onclick="window.location='""")+49:]
+            nth = data.find('\n')
+            n=4
+            while((nth>=0)and(n>1)):
+                  nth = data.find('\n', nth+1)
+                  n -= 1
+            end = nth
+            rowdata = data[:end]
+            rows.append(rowdata.split('\n'))
+            data = data[end:]
+                
+            
+      for item in rows:
+            if ('complaint' in item[2][item[2].find('<td>')+4:item[2].find('</td>')].lower()):
+                  return True
+      return False
+                  
+                        
  
 def getcomplaintinfo(data):
       docdata = []
@@ -202,10 +229,13 @@ def getcomplaintinfo(data):
             data = data[end:]
           
       
-      #THIS IS WHERE I LEFT OFF. INCLUDE THET NAME, SO THAT THE PDFWRITER CAN NAME THE FILE.
       for item in rows:
-            if ('complaint' in item[2][item[2].find('<td>')+4:item[2].find('</td>')].lower()):
-                  docdata.append([item[0][:item[0].find('.pdf')+4],item[3][item[3].find('<td>')+4:item[3].find('</td>')]])
+            filingname = item[2][item[2].find('<td>')+4:item[2].find('</td>')]
+            if ('complaint' in filingname.lower()):
+                  docdata.append([item[0][:item[0].find('.pdf')+4],item[3][item[3].find('<td>')+4:item[3].find('</td>')],filingname])
+                  
+      if (len(docdata)<1):
+            return -1
       n=-1
       maxyear = 0
       maxmon = 0
@@ -227,12 +257,30 @@ def getcomplaintinfo(data):
           
       address = "http://securities.stanford.edu/"+docdata[n][0]
       
-      pdfdata = urllib2.openurl(address).read()
+      pdfdata = (address,docdata[n][2])
       date = str(maxmon)+"/"+str(maxday)+"/"+str(maxyear)
       return (date,pdfdata)
 
-#def writepdf(pdfdata):
-      #with open(
+def writepdf(pdfdata,defendant,casedate):
+      global fourohfour
+      filename = defendant+", "+casedate.replace('/','-')+", "+pdfdata[1]
+      for item in ['\\','/',';','.',",","'","<",">",'"','|',"?","*",'\r','\n','\t','\a','\b','\v','\f']:
+            filename = filename.replace(item,'')
+      filename = os.getcwd().replace("\\",'/')+'/complaintdocs/'+filename
+      try:
+            data = urllib2.urlopen(pdfdata[0]).read()
+            with open(filename[:min(200,len(filename))]+".pdf",'wb') as f:
+                  f.write(data)
+                  f.close()
+            
+      except:
+            fourohfour+=1
+            with open(os.getcwd().replace("\\",'/')+'/complaintdocs/'+"badpdfcount.txt",'w+') as g:
+                  g.write(str(fourohfour))
+                  g.close()            
+                        
+            
+                  
      
  
  
@@ -242,7 +290,7 @@ csvanswer = raw_input('data will be written to '+str(os.getcwd())+"\\csvoutput\\
 if ((csvanswer.lower() != "y")and(csvanswer.lower() != "yes")):
       sys.exit(0)
       
-pdfpdfanswer = raw_input('complaint pdfs will be written in '+str(os.getcwd())+"\\complaintdocs\\, is this okay? (y/n): ")
+pdfanswer = raw_input('complaint pdfs will be written in '+str(os.getcwd())+"\\complaintdocs\\, is this okay? (y/n): ")
 if ((pdfanswer.lower() != "y")and(pdfanswer.lower() != "yes")):
       sys.exit(0)
      
@@ -256,6 +304,8 @@ if not os.path.exists(os.getcwd().replace("\\",'/')+"/complaintdocs/"):
       os.makedirs(os.getcwd().replace("\\",'/')+"/complaintdocs")
       
 global filings
+global fourohfour
+fourohfour = 0
 filings=0
 connectioncheck = False
 try:  
@@ -264,14 +314,29 @@ try:
       urllib2.urlopen("http://securities.stanford.edu/filings.html")
       connectioncheck = True
       print "Connection successful"
+      
            
 except:
       print "unable to communcate with server."
+      print "closing application in 10 seconds."
+      time.sleep(10)
+      sys.exit()
+      
      
 totalpages = getlastpage()
-for page in range(1,totalpages+1):
+print "webcrawler initiated..."
+start = 1
+average = 30
+totalsum = 0
+n=0
+for page in range(start,totalpages+1):
+      ts = time.time()
       url = "http://securities.stanford.edu/filings.html?page="+str(page)
       html = urllib2.urlopen(url)
       data = html.read()
       crawl(url)
-      print ('%.2f'%(float(filings*100)/(totalpages*20))+"% complete...")
+      n+=1
+      totalsum+=time.time()-ts
+      average = totalsum/n
+      remainingtime = str(float((totalpages-n)*average)/60)
+      print ('%.2f'%(float((filings+(start-1)*20)*100)/(totalpages*20))+"% complete. Estimated time to completion: "+remainingtime[:remainingtime.find('.')+2]+" minutes.")
